@@ -16,7 +16,22 @@ const uploadRoutes = require('./routes/upload.routes');
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://doan-2.vercel.app',
+    'https://doan-2-le3ra5jot-minhthu.vercel.app',
+];
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS: origin ${origin} not allowed`));
+        }
+    },
+    credentials: true,
+}));
 app.use(express.json());
 
 // Health check
