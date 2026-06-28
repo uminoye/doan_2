@@ -197,13 +197,13 @@ INSERT INTO roles (name, description) VALUES
     ('Factory', 'Nha may san xuat')
 ON CONFLICT DO NOTHING;
 
--- Mat khau: 123456 (hash bcrypt cost 10)
-INSERT INTO users (full_name, email, password_hash, role_id) VALUES 
-    ('Nguyen Van Admin', 'admin@congty.com', '$2a$10$7Z2P.Z8Z1t9.n2p/h4.R3e.N2.N9.v.b.C.x.S.V.T.v.B.B.B.B.B.B', 1),
-    ('Tran Thi Sale', 'sale@congty.com', '$2a$10$7Z2P.Z8Z1t9.n2p/h4.R3e.N2.N9.v.b.C.x.S.V.T.v.B.B.B.B.B.B', 2),
-    ('Le Van Logistics', 'logistics@congty.com', '$2a$10$7Z2P.Z8Z1t9.n2p/h4.R3e.N2.N9.v.b.C.x.S.V.T.v.B.B.B.B.B.B', 3),
-    ('Pham Thu Kho', 'kho@congty.com', '$2a$10$7Z2P.Z8Z1t9.n2p/h4.R3e.N2.N9.v.b.C.x.S.V.T.v.B.B.B.B.B.B', 4),
-    ('Truong Nha May', 'nhamay@congty.com', '$2a$10$7Z2P.Z8Z1t9.n2p/h4.R3e.N2.N9.v.b.C.x.S.V.T.v.B.B.B.B.B.B', 5)
+-- Mat khau: 123456
+INSERT INTO users (full_name, email, password_hash, role_id) VALUES
+    ('Nguyen Van Admin', 'admin@congty.com', '$2a$10$OVgbJkkIf54Xsftf3ApaWuWzQvHtgjcG8MU7ZguKzqM9yae1FaQfy', 1),
+    ('Tran Thi Sale', 'sale@congty.com', '$2a$10$OVgbJkkIf54Xsftf3ApaWuWzQvHtgjcG8MU7ZguKzqM9yae1FaQfy', 2),
+    ('Le Van Logistics', 'logistics@congty.com', '$2a$10$OVgbJkkIf54Xsftf3ApaWuWzQvHtgjcG8MU7ZguKzqM9yae1FaQfy', 3),
+    ('Pham Thu Kho', 'kho@congty.com', '$2a$10$OVgbJkkIf54Xsftf3ApaWuWzQvHtgjcG8MU7ZguKzqM9yae1FaQfy', 4),
+    ('Truong Nha May', 'nhamay@congty.com', '$2a$10$OVgbJkkIf54Xsftf3ApaWuWzQvHtgjcG8MU7ZguKzqM9yae1FaQfy', 5)
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO warehouses (warehouse_code, name, location) VALUES 
