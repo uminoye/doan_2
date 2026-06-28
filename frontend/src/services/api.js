@@ -3,6 +3,7 @@ import axios from 'axios';
 // Kết nối với Backend - dùng biến môi trường
 const api = axios.create({
   baseURL: (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, ''),
+  timeout: 10000, // 10 giây - tránh đợi mãi không thấy reply
 });
 
 // Tự động gắn thẻ Token vào mỗi lần gọi API nếu đã đăng nhập
@@ -25,6 +26,10 @@ api.interceptors.response.use(
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
       window.location.href = '/login';
+    }
+    // Đánh dấu lỗi timeout/network để component xử lý riêng
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || !error.response) {
+      error.isNetworkError = true;
     }
     return Promise.reject(error);
   }

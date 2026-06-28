@@ -31,8 +31,8 @@ export default function LoginPage() {
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/');
     } catch (error) {
-      if (error.code === 'ECONNABORTED' || error.message?.includes('Network Error') || !error.response) {
-        setErrorMsg('Không thể kết nối server. Vui lòng thử lại sau giây lát.');
+      if (error.isNetworkError || error.code === 'ECONNABORTED' || error.message?.includes('timeout') || error.message?.includes('Network Error')) {
+        setErrorMsg('Không thể kết nối server. Backend có thể đang ngủ (free tier), vui lòng đợi vài giây rồi thử lại.');
       } else {
         setErrorMsg(error.response?.data?.message || 'Lỗi đăng nhập');
       }
