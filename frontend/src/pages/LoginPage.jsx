@@ -17,17 +17,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
+    setLoading(true);
     try {
       const response = await api.post('/auth/login', { email, password });
       localStorage.setItem('accessToken', response.data.accessToken);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/');
     } catch (error) {
-      alert(error.response?.data?.message || 'Lỗi đăng nhập');
+      if (error.code === 'ECONNABORTED' || error.message?.includes('Network Error') || !error.response) {
+        setErrorMsg('Không thể kết nối server. Vui lòng thử lại sau giây lát.');
+      } else {
+        setErrorMsg(error.response?.data?.message || 'Lỗi đăng nhập');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -102,7 +112,12 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            <button type="submit" style={{ height: 46, marginTop: 4, border: 'none', borderRadius: 10, background: 'linear-gradient(90deg, #14b87a 0%, #22c55e 100%)', color: 'white', fontWeight: 700, cursor: 'pointer', boxShadow: '0 14px 28px rgba(34,197,94,0.25)' }}>Đăng nhập</button>
+            {errorMsg && (
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13, fontWeight: 500 }}>
+                {errorMsg}
+              </div>
+            )}
+            <button type="submit" disabled={loading} style={{ height: 46, marginTop: 4, border: 'none', borderRadius: 10, background: loading ? '#86efac' : 'linear-gradient(90deg, #14b87a 0%, #22c55e 100%)', color: loading ? '#166534' : 'white', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 14px 28px rgba(34,197,94,0.25)', opacity: loading ? 0.7 : 1, transition: 'all 0.2s' }}>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</button>
           </form>
           <div style={{ marginTop: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chọn nhanh một tài khoản demo bên dưới</div>
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
