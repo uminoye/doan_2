@@ -1,0 +1,47 @@
+name: Deploy Backend to Render
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install
+
+      - name: Verify DATABASE_URL is set
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "ERROR: DATABASE_URL secret is not set!"
+            exit 1
+          fi
+          echo "DATABASE_URL is configured"
+
+      - name: Initialize Database (Run migrations)
+        run: |
+          cd backend
+          npm run init-db
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production
+
+      - name: Deploy to Render
+        uses: render-deploy-action@v1
+        with:
+          render-deploy-url: ${{ secrets.RENDER_DEPLOY_WEBHOOK_URL }}
