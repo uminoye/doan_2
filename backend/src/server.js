@@ -22,6 +22,8 @@ const allowedOrigins = [
     'https://doan-2.vercel.app',
     'https://doan-2-le3ra5jot-minhthu.vercel.app',
     'https://doan-2-frontend.vercel.app',
+    'https://doan-2-full.vercel.app',
+    'https://doan-2-full-git-main-uminoyes-projects.vercel.app',
 ];
 app.use(cors({
     origin: (origin, callback) => {
