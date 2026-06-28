@@ -38,7 +38,8 @@ app.use(express.json());
 app.get('/api/test', (req, res) => {
     res.json({
         message: 'Server Backend đã hoạt động!',
-        database: 'Kết nối PostgreSQL (Neon) thành công.'
+        database: 'Kết nối PostgreSQL (Neon) thành công.',
+        timestamp: new Date().toISOString(),
     });
 });
 
