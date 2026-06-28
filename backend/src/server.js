@@ -34,13 +34,22 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Health check
-app.get('/api/test', (req, res) => {
-    res.json({
-        message: 'Server Backend đã hoạt động!',
-        database: 'Kết nối PostgreSQL (Neon) thành công.',
-        timestamp: new Date().toISOString(),
-    });
+// Health check - truly validates DB connection
+const db = require('./config/database');
+app.get('/api/test', async (req, res) => {
+    try {
+        await db.query('SELECT 1');
+        res.json({
+            message: 'Server Backend đã hoạt động!',
+            database: 'Kết nối PostgreSQL (Neon) thành công.',
+            timestamp: new Date().toISOString(),
+        });
+    } catch (err) {
+        res.status(500).json({
+            message: 'Server hoạt động nhưng database lỗi!',
+            error: err.message,
+        });
+    }
 });
 
 // API routes
