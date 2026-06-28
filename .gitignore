@@ -41,6 +41,8 @@ uploads/
 *.sqlite
 *.db
 
-# Misc
-.vercel/
-.render/
+# Scripts / secrets
+*.ps1
+check_db.js
+backend/check_db.js
+backend/test_*.js

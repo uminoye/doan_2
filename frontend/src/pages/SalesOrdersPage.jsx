@@ -410,6 +410,10 @@ export default function SalesOrdersPage() {
         setIsReasonModalOpen(false);
     };
 
+    const closeCancelReason = () => {
+        setCancelReasonOrder(null);
+    };
+
     useEffect(() => {
         if (isCreateOrderOpen) {
             const timer = window.setTimeout(() => orderNoInputRef.current?.focus(), 80);
