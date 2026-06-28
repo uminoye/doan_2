@@ -9,7 +9,7 @@
         "installCommand": "npm install --legacy-peer-deps",
         "devCommand": "npm run dev",
         "env": {
-          "VITE_API_URL": "@api-url"
+          "VITE_API_URL": "https://doan-2-665v.onrender.com/api"
         }
       }
     }
