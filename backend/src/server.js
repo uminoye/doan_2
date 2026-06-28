@@ -21,6 +21,7 @@ const allowedOrigins = [
     'http://localhost:3000',
     'https://doan-2.vercel.app',
     'https://doan-2-le3ra5jot-minhthu.vercel.app',
+    'https://doan-2-frontend.vercel.app',
 ];
 app.use(cors({
     origin: (origin, callback) => {
