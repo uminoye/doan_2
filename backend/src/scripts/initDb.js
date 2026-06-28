@@ -16,7 +16,7 @@ async function initDb() {
     console.log('Bắt đầu khởi tạo database...');
 
     const initSql = fs.readFileSync(
-        path.resolve(__dirname, '../../database/init.sql'),
+        path.resolve(__dirname, '../../../database/init.sql'),
         'utf8'
     );
 
