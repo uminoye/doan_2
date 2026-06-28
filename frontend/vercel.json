@@ -1,8 +1,8 @@
 {
   "framework": "vite",
-  "buildCommand": "npm install && ESLINT_NO_DEV_ERRORS=true npm run build",
+  "buildCommand": "npm install --legacy-peer-deps && ESLINT_NO_DEV_ERRORS=true npm run build",
   "outputDirectory": "dist",
-  "installCommand": "npm install",
+  "installCommand": "npm install --legacy-peer-deps",
   "devCommand": "npm run dev",
   "regions": ["sin1"],
   "env": {
