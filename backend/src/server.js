@@ -37,6 +37,14 @@ app.use(express.json());
 
 // Health check - truly validates DB connection
 const db = require('./config/database');
+app.get('/api/health', async (req, res) => {
+    try {
+        await db.query('SELECT 1');
+        res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    } catch (err) {
+        res.status(500).json({ status: 'db_error', error: err.message });
+    }
+});
 app.get('/api/test', async (req, res) => {
     try {
         await db.query('SELECT 1');
