@@ -512,10 +512,6 @@ export default function SalesOrdersPage() {
         }
     };
 
-    const closeCancelReason = () => {
-        setCancelReasonOrder(null);
-    };
-
     return (
         <div style={pageStyles.page}>
             <style>{`
