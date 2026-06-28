@@ -1,36 +1,36 @@
 const db = require('../config/database');
 
 // 1. Lấy danh sách tất cả đơn hàng kèm chi tiết sản phẩm
-const getAllOrders = (req, res) => {
-    const query = `
-        SELECT
-            o.id,
-            o.order_no,
-            o.customer_id,
-            c.company_name as customer_name,
-            o.order_date,
-            o.expected_delivery_date,
-            o.actual_delivery_date,
-            o.created_by,
-            o.status,
-            o.note,
-            o.created_at,
-            o.updated_at,
-            oi.id as item_id,
-            oi.product_id,
-            oi.quantity,
-            oi.unit_price,
-            p.name as product_name,
-            p.sku as product_sku
-        FROM sales_orders o
-        JOIN customers c ON o.customer_id = c.id
-        LEFT JOIN sales_order_items oi ON oi.order_id = o.id
-        LEFT JOIN products p ON p.id = oi.product_id
-        ORDER BY o.created_at DESC, oi.id ASC
-    `;
+const getAllOrders = async (req, res) => {
+    try {
+        const query = `
+            SELECT
+                o.id,
+                o.order_no,
+                o.customer_id,
+                c.company_name as customer_name,
+                o.order_date,
+                o.expected_delivery_date,
+                o.actual_delivery_date,
+                o.created_by,
+                o.status,
+                o.note,
+                o.created_at,
+                o.updated_at,
+                oi.id as item_id,
+                oi.product_id,
+                oi.quantity,
+                oi.unit_price,
+                p.name as product_name,
+                p.sku as product_sku
+            FROM sales_orders o
+            JOIN customers c ON o.customer_id = c.id
+            LEFT JOIN sales_order_items oi ON oi.order_id = o.id
+            LEFT JOIN products p ON p.id = oi.product_id
+            ORDER BY o.created_at DESC, oi.id ASC
+        `;
 
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi máy chủ', error: err.message });
+        const rows = await db.all(query);
 
         const ordersMap = new Map();
 
@@ -66,16 +66,20 @@ const getAllOrders = (req, res) => {
         });
 
         res.status(200).json(Array.from(ordersMap.values()));
-    });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi máy chủ', error: err.message });
+    }
 };
 
 // 2. Lấy chi tiết các sản phẩm bên trong 1 đơn hàng
-const getOrderItems = (req, res) => {
-    const { id } = req.params;
-    db.all(`SELECT * FROM sales_order_items WHERE order_id = $1`, [id], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi máy chủ' });
+const getOrderItems = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const rows = await db.all(`SELECT * FROM sales_order_items WHERE order_id = $1`, [id]);
         res.status(200).json(rows);
-    });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi máy chủ' });
+    }
 };
 
 // 3. Sales tạo đơn hàng mới

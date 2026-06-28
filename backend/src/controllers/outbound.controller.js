@@ -3,45 +3,45 @@ const db = require('../config/database');
 // =====================================================================
 // 1. LẤY DANH SÁCH PHIẾU XUẤT (Để xem lịch sử)
 // =====================================================================
-const getAllOutbounds = (req, res) => {
-    const query = `
-        SELECT
-            o.id,
-            o.outbound_no,
-            o.order_id,
-            o.warehouse_id,
-            o.export_date,
-            o.created_by,
-            o.status,
-            o.note,
-            o.created_at,
-            o.updated_at,
-            s.order_no,
-            s.order_date,
-            s.expected_delivery_date,
-            s.actual_delivery_date,
-            s.status AS order_status,
-            s.note AS order_note,
-            s.created_at AS order_created_at,
-            c.company_name AS customer_name,
-            c.phone AS customer_phone,
-            c.address AS customer_address,
-            w.name AS warehouse_name,
-            w.warehouse_code AS warehouse_code,
-            u.full_name AS creator_name,
-            COALESCE(SUM(soi.quantity * COALESCE(soi.unit_price, 0)), 0) AS total_amount
-        FROM stock_outbound_notes o
-        LEFT JOIN warehouses w ON o.warehouse_id = w.id
-        LEFT JOIN users u ON o.created_by = u.id
-        LEFT JOIN sales_orders s ON o.order_id = s.id
-        LEFT JOIN customers c ON s.customer_id = c.id
-        LEFT JOIN stock_outbound_note_items soi ON o.id = soi.outbound_note_id
-        GROUP BY o.id
-        ORDER BY o.id DESC
-    `;
+const getAllOutbounds = async (req, res) => {
+    try {
+        const query = `
+            SELECT
+                o.id,
+                o.outbound_no,
+                o.order_id,
+                o.warehouse_id,
+                o.export_date,
+                o.created_by,
+                o.status,
+                o.note,
+                o.created_at,
+                o.updated_at,
+                s.order_no,
+                s.order_date,
+                s.expected_delivery_date,
+                s.actual_delivery_date,
+                s.status AS order_status,
+                s.note AS order_note,
+                s.created_at AS order_created_at,
+                c.company_name AS customer_name,
+                c.phone AS customer_phone,
+                c.address AS customer_address,
+                w.name AS warehouse_name,
+                w.warehouse_code AS warehouse_code,
+                u.full_name AS creator_name,
+                COALESCE(SUM(soi.quantity * COALESCE(soi.unit_price, 0)), 0) AS total_amount
+            FROM stock_outbound_notes o
+            LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            LEFT JOIN users u ON o.created_by = u.id
+            LEFT JOIN sales_orders s ON o.order_id = s.id
+            LEFT JOIN customers c ON s.customer_id = c.id
+            LEFT JOIN stock_outbound_note_items soi ON o.id = soi.outbound_note_id
+            GROUP BY o.id
+            ORDER BY o.id DESC
+        `;
 
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi lấy danh sách', error: err.message });
+        const rows = await db.all(query);
 
         const outbounds = rows.map(row => ({
             id: row.id,
@@ -63,21 +63,20 @@ const getAllOutbounds = (req, res) => {
             updated_at: row.updated_at,
         }));
 
-        // Load items for each outbound
-        const loadItems = (outbound) => {
-            return db.all(
+        const loadItems = (outbound) =>
+            db.all(
                 `SELECT soi.id, soi.product_id, p.name as product_name, p.sku as product_sku, soi.quantity
                  FROM stock_outbound_note_items soi
                  LEFT JOIN products p ON soi.product_id = p.id
                  WHERE soi.outbound_note_id = $1`,
                 [outbound.id]
             ).then(items => ({ ...outbound, items }));
-        };
 
-        Promise.all(outbounds.map(loadItems)).then(results => {
-            res.status(200).json(results);
-        });
-    });
+        const results = await Promise.all(outbounds.map(loadItems));
+        res.status(200).json(results);
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi lấy danh sách', error: err.message });
+    }
 };
 
 // =====================================================================
@@ -98,7 +97,6 @@ const createOutbound = (req, res) => {
     ).then(items => {
         if (!items || items.length === 0) return res.status(400).json({ message: 'Không tìm thấy chi tiết sản phẩm của đơn hàng này!' });
 
-        // Check stock for all items
         const stockChecks = items.map(item =>
             db.get(
                 `SELECT b.on_hand_qty, p.name FROM inventory_balances b JOIN products p ON b.product_id = p.id WHERE b.product_id = $1 AND b.warehouse_id = $2`,
@@ -125,13 +123,11 @@ const createOutbound = (req, res) => {
                         `INSERT INTO stock_outbound_note_items (outbound_note_id, product_id, quantity) VALUES ($1, $2, $3)`,
                         [outboundId, item.product_id, item.quantity]
                     );
-
                     await client.query(
                         `UPDATE inventory_balances SET on_hand_qty = on_hand_qty - $1, updated_at = NOW()
                          WHERE warehouse_id = $2 AND product_id = $3`,
                         [item.quantity, warehouse_id, item.product_id]
                     );
-
                     await client.query(
                         `INSERT INTO inventory_transactions (warehouse_id, product_id, transaction_type, quantity, reference_type, reference_id)
                          VALUES ($1, $2, 'OUT', $3, 'stock_outbound', $4)`,
@@ -140,7 +136,6 @@ const createOutbound = (req, res) => {
                 }
 
                 await client.query(`UPDATE sales_orders SET status = 'shipping', updated_at = NOW() WHERE id = $1`, [order_id]);
-
                 res.status(201).json({ message: 'Xuất kho thành công! Đã trừ tồn và cập nhật đơn hàng.', outbound_id: outboundId });
             });
         });
@@ -170,13 +165,11 @@ const respondOutbound = (req, res) => {
             `UPDATE sales_orders SET status = $1, note = $2, updated_at = NOW() WHERE id = $3`,
             [newStatus, finalNote, order_id]
         );
-
         await client.query(
             `INSERT INTO delivery_requests (order_id, status, logistics_note, warehouse_note, updated_at)
              VALUES ($1, $2, $3, $4, NOW())`,
             [order_id, newStatus, reason || null, expected_date || null]
         );
-
         res.status(200).json({ message: 'Đã gửi phản hồi từ Kho thành công!' });
     }).catch(() => {
         res.status(500).json({ message: 'Lỗi cập nhật phản hồi' });
@@ -186,69 +179,69 @@ const respondOutbound = (req, res) => {
 // =====================================================================
 // 4. LẤY ĐƠN CHỜ XUẤT (PENDING OUTBOUND)
 // =====================================================================
-const getPendingOutboundRequests = (req, res) => {
-    const query = `
-        SELECT
-            s.id,
-            s.order_no,
-            s.order_date,
-            s.expected_delivery_date,
-            CASE 
-                WHEN s.status IN ('canceled', 'returned') THEN NULL 
-                ELSE s.actual_delivery_date 
-            END AS actual_delivery_date,
-            s.status AS order_status,
-            s.note AS order_note,
-            s.created_at,
-            s.updated_at,
-            c.company_name AS customer_name,
-            c.phone AS customer_phone,
-            c.address AS customer_address,
-            COALESCE(SUM(soi.quantity * COALESCE(soi.unit_price, p.sale_price, 0)), 0) AS total_amount,
-            (
-                SELECT d.status FROM delivery_requests d
-                WHERE d.order_id = s.id ORDER BY d.id DESC LIMIT 1
-            ) AS delivery_status,
-            (
-                SELECT d.logistics_note FROM delivery_requests d
-                WHERE d.order_id = s.id ORDER BY d.id DESC LIMIT 1
-            ) AS delivery_note,
-            (
-                SELECT d.warehouse_note FROM delivery_requests d
-                WHERE d.order_id = s.id ORDER BY d.id DESC LIMIT 1
-            ) AS warehouse_note,
-            (
-                SELECT son.warehouse_id FROM stock_outbound_notes son
-                WHERE son.order_id = s.id ORDER BY son.id DESC LIMIT 1
-            ) AS warehouse_id,
-            (
-                SELECT w.name FROM stock_outbound_notes son
-                JOIN warehouses w ON w.id = son.warehouse_id
-                WHERE son.order_id = s.id ORDER BY son.id DESC LIMIT 1
-            ) AS warehouse_name,
-            (
-                SELECT son.export_date FROM stock_outbound_notes son
-                WHERE son.order_id = s.id ORDER BY son.id DESC LIMIT 1
-            ) AS export_date
-        FROM sales_orders s
-        LEFT JOIN customers c ON s.customer_id = c.id
-        LEFT JOIN sales_order_items soi ON s.id = soi.order_id
-        LEFT JOIN products p ON soi.product_id = p.id
-        WHERE s.status IN ('warehouse_processing', 'shipping', 'completed', 'returned', 'canceled')
-            OR EXISTS (
-                SELECT 1 FROM delivery_requests d
-                WHERE d.order_id = s.id
-                    AND COALESCE(d.status, '') IN ('warehouse_processing', 'shipping', 'completed', 'returned', 'canceled')
-            )
-        GROUP BY s.id
-        ORDER BY s.updated_at DESC, s.id DESC
-    `;
+const getPendingOutboundRequests = async (req, res) => {
+    try {
+        const query = `
+            SELECT
+                s.id,
+                s.order_no,
+                s.order_date,
+                s.expected_delivery_date,
+                CASE
+                    WHEN s.status IN ('canceled', 'returned') THEN NULL
+                    ELSE s.actual_delivery_date
+                END AS actual_delivery_date,
+                s.status AS order_status,
+                s.note AS order_note,
+                s.created_at,
+                s.updated_at,
+                c.company_name AS customer_name,
+                c.phone AS customer_phone,
+                c.address AS customer_address,
+                COALESCE(SUM(soi.quantity * COALESCE(soi.unit_price, p.sale_price, 0)), 0) AS total_amount,
+                (
+                    SELECT d.status FROM delivery_requests d
+                    WHERE d.order_id = s.id ORDER BY d.id DESC LIMIT 1
+                ) AS delivery_status,
+                (
+                    SELECT d.logistics_note FROM delivery_requests d
+                    WHERE d.order_id = s.id ORDER BY d.id DESC LIMIT 1
+                ) AS delivery_note,
+                (
+                    SELECT d.warehouse_note FROM delivery_requests d
+                    WHERE d.order_id = s.id ORDER BY d.id DESC LIMIT 1
+                ) AS warehouse_note,
+                (
+                    SELECT son.warehouse_id FROM stock_outbound_notes son
+                    WHERE son.order_id = s.id ORDER BY son.id DESC LIMIT 1
+                ) AS warehouse_id,
+                (
+                    SELECT w.name FROM stock_outbound_notes son
+                    JOIN warehouses w ON w.id = son.warehouse_id
+                    WHERE son.order_id = s.id ORDER BY son.id DESC LIMIT 1
+                ) AS warehouse_name,
+                (
+                    SELECT son.export_date FROM stock_outbound_notes son
+                    WHERE son.order_id = s.id ORDER BY son.id DESC LIMIT 1
+                ) AS export_date
+            FROM sales_orders s
+            LEFT JOIN customers c ON s.customer_id = c.id
+            LEFT JOIN sales_order_items soi ON s.id = soi.order_id
+            LEFT JOIN products p ON soi.product_id = p.id
+            WHERE s.status IN ('warehouse_processing', 'shipping', 'completed', 'returned', 'canceled')
+                OR EXISTS (
+                    SELECT 1 FROM delivery_requests d
+                    WHERE d.order_id = s.id
+                        AND COALESCE(d.status, '') IN ('warehouse_processing', 'shipping', 'completed', 'returned', 'canceled')
+                )
+            GROUP BY s.id
+            ORDER BY s.updated_at DESC, s.id DESC
+        `;
 
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi lấy danh sách đơn chờ xuất', error: err.message });
+        const rows = await db.all(query);
 
-        const loadItems = (row) => {
-            return db.all(
+        const loadItems = (row) =>
+            db.all(
                 `SELECT soi.id, soi.product_id, p.name as product_name, p.sku as product_sku, soi.quantity, COALESCE(soi.unit_price, p.sale_price, 0) as unit_price
                  FROM sales_order_items soi
                  LEFT JOIN products p ON soi.product_id = p.id
@@ -277,12 +270,12 @@ const getPendingOutboundRequests = (req, res) => {
                 warehouse_name: row.warehouse_name,
                 export_date: row.export_date,
             }));
-        };
 
-        Promise.all(rows.map(loadItems)).then(results => {
-            res.status(200).json(results);
-        });
-    });
+        const results = await Promise.all(rows.map(loadItems));
+        res.status(200).json(results);
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi lấy danh sách đơn chờ xuất', error: err.message });
+    }
 };
 
 // =====================================================================
@@ -329,13 +322,11 @@ const createOutboundFromPending = (req, res) => {
                         `INSERT INTO stock_outbound_note_items (outbound_note_id, product_id, quantity) VALUES ($1, $2, $3)`,
                         [outboundId, item.product_id, item.quantity]
                     );
-
                     await client.query(
                         `UPDATE inventory_balances SET on_hand_qty = on_hand_qty - $1, updated_at = NOW()
                          WHERE warehouse_id = $2 AND product_id = $3`,
                         [item.quantity, warehouse_id, item.product_id]
                     );
-
                     await client.query(
                         `INSERT INTO inventory_transactions (warehouse_id, product_id, transaction_type, quantity, reference_type, reference_id)
                          VALUES ($1, $2, 'OUT', $3, 'stock_outbound', $4)`,
@@ -344,7 +335,6 @@ const createOutboundFromPending = (req, res) => {
                 }
 
                 await client.query(`UPDATE sales_orders SET status = 'shipping', updated_at = NOW() WHERE id = $1`, [order_id]);
-
                 res.status(201).json({ message: 'Xuất kho thành công! Đã trừ tồn và cập nhật đơn hàng.', outbound_id: outboundId });
             });
         });

@@ -1,10 +1,12 @@
 const db = require('../config/database');
 
-const getAllWarehouses = (req, res) => {
-    db.all(`SELECT * FROM warehouses ORDER BY id ASC`, [], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi lấy danh sách kho' });
+const getAllWarehouses = async (req, res) => {
+    try {
+        const rows = await db.all(`SELECT * FROM warehouses ORDER BY id ASC`);
         res.status(200).json(rows);
-    });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi lấy danh sách kho' });
+    }
 };
 
 const createWarehouse = (req, res) => {

@@ -1,16 +1,18 @@
 const db = require('../config/database');
 
-const getAllCustomers = (req, res) => {
-    const query = `
-        SELECT c.*, u.full_name as creator_name 
-        FROM customers c 
-        LEFT JOIN users u ON c.created_by = u.id 
-        ORDER BY c.id DESC
-    `;
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi máy chủ', error: err.message });
+const getAllCustomers = async (req, res) => {
+    try {
+        const query = `
+            SELECT c.*, u.full_name as creator_name
+            FROM customers c
+            LEFT JOIN users u ON c.created_by = u.id
+            ORDER BY c.id DESC
+        `;
+        const rows = await db.all(query);
         res.status(200).json(rows);
-    });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi máy chủ', error: err.message });
+    }
 };
 
 const createCustomer = (req, res) => {

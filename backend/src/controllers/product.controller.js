@@ -3,32 +3,34 @@ const db = require('../config/database');
 // ==========================================================
 // 1. LẤY DANH SÁCH SẢN PHẨM & GỘP TỒN KHO TỪ NHIỀU KHO
 // ==========================================================
-const getAllProducts = (req, res) => {
-    const query = `
-        SELECT 
-            p.*,
-            COALESCE(p.min_stock, 50) as min_stock,
-            COALESCE(SUM(ib.on_hand_qty), 0) as total_stock,
-            CASE
-                WHEN COALESCE(SUM(ib.on_hand_qty), 0) = 0 THEN 'Hết hàng'
-                WHEN COALESCE(SUM(ib.on_hand_qty), 0) < COALESCE(p.min_stock, 50) THEN 'Sắp hết hàng'
-                ELSE 'Còn hàng'
-            END as stock_status,
-            (
-                SELECT STRING_AGG(w.name || ': ' || COALESCE(ib2.on_hand_qty, 0), ' | ' ORDER BY w.id)
-                FROM warehouses w
-                LEFT JOIN inventory_balances ib2 ON w.id = ib2.warehouse_id AND ib2.product_id = p.id
-            ) as stock_breakdown
-        FROM products p
-        LEFT JOIN inventory_balances ib ON p.id = ib.product_id
-        GROUP BY p.id
-        ORDER BY p.id DESC
-    `;
+const getAllProducts = async (req, res) => {
+    try {
+        const query = `
+            SELECT
+                p.*,
+                COALESCE(p.min_stock, 50) as min_stock,
+                COALESCE(SUM(ib.on_hand_qty), 0) as total_stock,
+                CASE
+                    WHEN COALESCE(SUM(ib.on_hand_qty), 0) = 0 THEN 'Hết hàng'
+                    WHEN COALESCE(SUM(ib.on_hand_qty), 0) < COALESCE(p.min_stock, 50) THEN 'Sắp hết hàng'
+                    ELSE 'Còn hàng'
+                END as stock_status,
+                (
+                    SELECT STRING_AGG(w.name || ': ' || COALESCE(ib2.on_hand_qty, 0), ' | ' ORDER BY w.id)
+                    FROM warehouses w
+                    LEFT JOIN inventory_balances ib2 ON w.id = ib2.warehouse_id AND ib2.product_id = p.id
+                ) as stock_breakdown
+            FROM products p
+            LEFT JOIN inventory_balances ib ON p.id = ib.product_id
+            GROUP BY p.id
+            ORDER BY p.id DESC
+        `;
 
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi Database', error: err.message });
+        const rows = await db.all(query);
         res.status(200).json(rows);
-    });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi Database', error: err.message });
+    }
 };
 
 const createProduct = async (req, res) => {

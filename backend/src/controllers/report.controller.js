@@ -163,27 +163,28 @@ const getDashboardStats = async (req, res) => {
     }
 };
 
-const getInventoryReport = (req, res) => {
-    const query = `
-        SELECT 
-            p.sku, 
-            p.name as product_name, 
-            w.name as warehouse_name, 
-            ib.on_hand_qty, 
-            p.unit,
-            p.sale_price,
-            (ib.on_hand_qty * p.sale_price) as total_value
-        FROM inventory_balances ib
-        JOIN products p ON ib.product_id = p.id
-        JOIN warehouses w ON ib.warehouse_id = w.id
-        WHERE ib.on_hand_qty > 0
-        ORDER BY w.name, p.name
-    `;
-
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi lấy báo cáo', error: err.message });
+const getInventoryReport = async (req, res) => {
+    try {
+        const query = `
+            SELECT
+                p.sku,
+                p.name as product_name,
+                w.name as warehouse_name,
+                ib.on_hand_qty,
+                p.unit,
+                p.sale_price,
+                (ib.on_hand_qty * p.sale_price) as total_value
+            FROM inventory_balances ib
+            JOIN products p ON ib.product_id = p.id
+            JOIN warehouses w ON ib.warehouse_id = w.id
+            WHERE ib.on_hand_qty > 0
+            ORDER BY w.name, p.name
+        `;
+        const rows = await db.all(query);
         res.status(200).json(rows);
-    });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi lấy báo cáo', error: err.message });
+    }
 };
 
 module.exports = { getDashboardStats, getInventoryReport };

@@ -2,11 +2,10 @@ const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const login = (req, res) => {
-    const { email, password } = req.body;
-
-    db.get(`SELECT * FROM users WHERE email = $1`, [email], (err, user) => {
-        if (err) return res.status(500).json({ message: 'Lỗi máy chủ', error: err.message });
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await db.get(`SELECT * FROM users WHERE email = $1`, [email]);
         if (!user) return res.status(404).json({ message: 'Tài khoản không tồn tại' });
 
         const passwordIsValid = bcrypt.compareSync(password, user.password_hash);
@@ -28,15 +27,18 @@ const login = (req, res) => {
             },
             accessToken: token
         });
-    });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi máy chủ', error: err.message });
+    }
 };
 
-const getAllUsers = (req, res) => {
-    const query = `SELECT id, email, full_name, role_id FROM users ORDER BY id DESC`;
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi Database: ' + err.message });
+const getAllUsers = async (req, res) => {
+    try {
+        const rows = await db.all(`SELECT id, email, full_name, role_id FROM users ORDER BY id DESC`);
         res.status(200).json(rows);
-    });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi Database: ' + err.message });
+    }
 };
 
 const createUser = (req, res) => {

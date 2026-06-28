@@ -1,48 +1,47 @@
 const db = require('../config/database');
 
 // 1. LẤY DANH SÁCH PHIẾU
-const getAllReceipts = (req, res) => {
-    const query = `
-        SELECT p.*, w.name as warehouse_name, u.full_name as creator_name
-        FROM production_receipts p
-        LEFT JOIN warehouses w ON p.warehouse_id = w.id
-        LEFT JOIN users u ON p.created_by = u.id
-        ORDER BY p.id DESC
-    `;
+const getAllReceipts = async (req, res) => {
+    try {
+        const query = `
+            SELECT p.*, w.name as warehouse_name, u.full_name as creator_name
+            FROM production_receipts p
+            LEFT JOIN warehouses w ON p.warehouse_id = w.id
+            LEFT JOIN users u ON p.created_by = u.id
+            ORDER BY p.id DESC
+        `;
 
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Lỗi máy chủ', error: err.message });
+        const rows = await db.all(query);
 
         if (!rows.length) return res.status(200).json([]);
 
         const receiptIds = rows.map(row => row.id);
         const placeholders = receiptIds.map((_, i) => `$${i + 1}`).join(',');
 
-        db.all(
+        const items = await db.all(
             `SELECT pri.receipt_id, pri.product_id, pri.quantity, p.name as product_name
              FROM production_receipt_items pri
              LEFT JOIN products p ON p.id = pri.product_id
              WHERE pri.receipt_id IN (${placeholders})
              ORDER BY pri.id ASC`,
-            receiptIds,
-            (itemErr, items) => {
-                if (itemErr) return res.status(500).json({ message: 'Lỗi máy chủ', error: itemErr.message });
-
-                const itemsByReceipt = items.reduce((acc, item) => {
-                    if (!acc[item.receipt_id]) acc[item.receipt_id] = [];
-                    acc[item.receipt_id].push(item);
-                    return acc;
-                }, {});
-
-                const result = rows.map(row => ({
-                    ...row,
-                    items: itemsByReceipt[row.id] || []
-                }));
-
-                return res.status(200).json(result);
-            }
+            receiptIds
         );
-    });
+
+        const itemsByReceipt = items.reduce((acc, item) => {
+            if (!acc[item.receipt_id]) acc[item.receipt_id] = [];
+            acc[item.receipt_id].push(item);
+            return acc;
+        }, {});
+
+        const result = rows.map(row => ({
+            ...row,
+            items: itemsByReceipt[row.id] || []
+        }));
+
+        res.status(200).json(result);
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi máy chủ', error: err.message });
+    }
 };
 
 // 2. KHO TẠO YÊU CẦU (Status: PENDING)
